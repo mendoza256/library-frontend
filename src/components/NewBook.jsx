@@ -1,4 +1,42 @@
 import { useState } from 'react'
+import { useMutation, useQuery } from '@apollo/client'
+import { gql } from '@apollo/client'
+
+const ALL_AUTHORS = gql`
+  query {
+    allAuthors {
+      name
+      born
+      bookCount
+    }
+  }
+`
+
+const ALL_BOOKS = gql`
+  query {
+    allBooks {
+      title
+      author
+      published
+    }
+  }
+`
+
+const ADD_BOOK = gql`
+  mutation addBook($title: String!, $author: String!, $published: Int!, $genres: [String!]!) {
+    addBook(
+      title: $title,
+      author: $author,
+      published: $published,
+      genres: $genres
+    ) {
+      title
+      author
+      published
+      genres
+    }
+  }
+`
 
 const NewBook = (props) => {
   const [title, setTitle] = useState('')
@@ -7,6 +45,13 @@ const NewBook = (props) => {
   const [genre, setGenre] = useState('')
   const [genres, setGenres] = useState([])
 
+  const [addBook] = useMutation(ADD_BOOK, {
+    refetchQueries: [{ query: ALL_AUTHORS }, { query: ALL_BOOKS }],
+    onError: (error) => {
+      console.error('Error adding book:', error)
+    }
+  })
+
   if (!props.show) {
     return null
   }
@@ -14,18 +59,31 @@ const NewBook = (props) => {
   const submit = async (event) => {
     event.preventDefault()
 
-    console.log('add book...')
+    try {
+      await addBook({
+        variables: {
+          title,
+          author,
+          published: parseInt(published),
+          genres
+        }
+      })
 
-    setTitle('')
-    setPublished('')
-    setAuthor('')
-    setGenres([])
-    setGenre('')
+      setTitle('')
+      setPublished('')
+      setAuthor('')
+      setGenres([])
+      setGenre('')
+    } catch (error) {
+      console.error('Error adding book:', error)
+    }
   }
 
   const addGenre = () => {
-    setGenres(genres.concat(genre))
-    setGenre('')
+    if (genre && !genres.includes(genre)) {
+      setGenres(genres.concat(genre))
+      setGenre('')
+    }
   }
 
   return (
