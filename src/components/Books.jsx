@@ -29,13 +29,11 @@ const Books = (props) => {
     return <div>loading...</div>;
   }
 
-  // Get books from the appropriate query result
   const books =
     selectedGenre === "all"
       ? allBooksResult.data.allBooks
       : booksByGenreResult.data.allBooks;
 
-  // Extract unique genres from all books (always use allBooks for this)
   const allGenres = [
     ...new Set(allBooksResult.data.allBooks.flatMap((book) => book.genres)),
   ];

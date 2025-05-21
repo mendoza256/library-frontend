@@ -14,7 +14,6 @@ const NewBook = (props) => {
     refetchQueries: [
       { query: ALL_AUTHORS },
       { query: ALL_BOOKS },
-      // Refetch genre-specific queries for each genre in the new book
       ...genres.map((genre) => ({
         query: BOOKS_BY_GENRE,
         variables: { genre },
