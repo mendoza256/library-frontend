@@ -1,58 +1,7 @@
 import { useState } from "react";
-import { useMutation, useQuery } from "@apollo/client";
-import { gql } from "@apollo/client";
-
-const ALL_AUTHORS = gql`
-  query {
-    allAuthors {
-      name
-      born
-      bookCount
-    }
-  }
-`;
-
-const ALL_BOOKS = gql`
-  query {
-    allBooks {
-      title
-      author {
-        name
-        id
-        born
-        bookCount
-      }
-      published
-      genres
-    }
-  }
-`;
-
-const ADD_BOOK = gql`
-  mutation addBook(
-    $title: String!
-    $author: String!
-    $published: Int!
-    $genres: [String!]!
-  ) {
-    addBook(
-      title: $title
-      author: $author
-      published: $published
-      genres: $genres
-    ) {
-      title
-      author {
-        name
-        id
-        born
-        bookCount
-      }
-      published
-      genres
-    }
-  }
-`;
+import { useMutation } from "@apollo/client";
+import { ALL_AUTHORS } from "../queries/authorQueries";
+import { ALL_BOOKS, BOOKS_BY_GENRE, ADD_BOOK } from "../queries/bookQueries";
 
 const NewBook = (props) => {
   const [title, setTitle] = useState("");
@@ -62,7 +11,15 @@ const NewBook = (props) => {
   const [genres, setGenres] = useState([]);
 
   const [addBook] = useMutation(ADD_BOOK, {
-    refetchQueries: [{ query: ALL_AUTHORS }, { query: ALL_BOOKS }],
+    refetchQueries: [
+      { query: ALL_AUTHORS },
+      { query: ALL_BOOKS },
+      // Refetch genre-specific queries for each genre in the new book
+      ...genres.map((genre) => ({
+        query: BOOKS_BY_GENRE,
+        variables: { genre },
+      })),
+    ],
     onError: (error) => {
       console.error("Error adding book:", error);
     },
