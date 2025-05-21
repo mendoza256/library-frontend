@@ -18,11 +18,31 @@ const ALL_BOOKS = gql`
   }
 `;
 
+const BOOKS_BY_GENRE = gql`
+  query BooksByGenre($genre: String!) {
+    allBooks(genre: $genre) {
+      title
+      author {
+        name
+        born
+        bookCount
+      }
+      published
+      genres
+      id
+    }
+  }
+`;
+
 const Books = (props) => {
   const [selectedGenre, setSelectedGenre] = useState(
     props.selectedGenre || "all"
   );
-  const result = useQuery(ALL_BOOKS);
+  const allBooksResult = useQuery(ALL_BOOKS);
+  const booksByGenreResult = useQuery(BOOKS_BY_GENRE, {
+    variables: { genre: selectedGenre },
+    skip: selectedGenre === "all",
+  });
 
   useEffect(() => {
     if (props.selectedGenre) {
@@ -34,20 +54,23 @@ const Books = (props) => {
     return null;
   }
 
-  if (result.loading) {
+  if (
+    allBooksResult.loading ||
+    (selectedGenre !== "all" && booksByGenreResult.loading)
+  ) {
     return <div>loading...</div>;
   }
 
-  const books = result.data.allBooks;
-
-  // Extract unique genres from all books
-  const allGenres = [...new Set(books.flatMap((book) => book.genres))];
-
-  // Filter books based on selected genre
-  const filteredBooks =
+  // Get books from the appropriate query result
+  const books =
     selectedGenre === "all"
-      ? books
-      : books.filter((book) => book.genres.includes(selectedGenre));
+      ? allBooksResult.data.allBooks
+      : booksByGenreResult.data.allBooks;
+
+  // Extract unique genres from all books (always use allBooks for this)
+  const allGenres = [
+    ...new Set(allBooksResult.data.allBooks.flatMap((book) => book.genres)),
+  ];
 
   const handleGenreChange = (genre) => {
     setSelectedGenre(genre);
@@ -56,7 +79,7 @@ const Books = (props) => {
     }
   };
 
-  if ((props.isFavoriteView && !selectedGenre) || selectedGenre === "all") {
+  if (props.isFavoriteView && !selectedGenre) {
     return (
       <div>
         <h2>recommended books</h2>
@@ -86,7 +109,7 @@ const Books = (props) => {
             <th>published</th>
             <th>genres</th>
           </tr>
-          {filteredBooks.map((book) => (
+          {books.map((book) => (
             <tr key={book.id}>
               <td>{book.title}</td>
               <td>{book.author.name}</td>
