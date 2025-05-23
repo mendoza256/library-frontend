@@ -1,6 +1,7 @@
-import { useQuery } from "@apollo/client";
+import { useQuery, useSubscription } from "@apollo/client";
 import { useState, useEffect } from "react";
 import { ALL_BOOKS, BOOKS_BY_GENRE } from "../queries/bookQueries";
+import { BOOK_ADDED } from "../queries/subscriptionQueries";
 
 const Books = (props) => {
   const [selectedGenre, setSelectedGenre] = useState(
@@ -11,6 +12,61 @@ const Books = (props) => {
     variables: { genre: selectedGenre },
     skip: selectedGenre === "all",
   });
+
+  const {
+    data: subscriptionData,
+    loading: subscriptionLoading,
+    error: subscriptionError,
+  } = useSubscription(BOOK_ADDED, {
+    onData: ({ data, client }) => {
+      console.log("Subscription data received:", data);
+      const addedBook = data.data.bookAdded;
+      window.alert(
+        `New book added: ${addedBook.title} by ${addedBook.author.name}`
+      );
+
+      // Update the cache for ALL_BOOKS query
+      const cachedData = client.cache.readQuery({ query: ALL_BOOKS });
+      if (cachedData) {
+        console.log("Updating ALL_BOOKS cache with new book:", addedBook);
+        client.cache.writeQuery({
+          query: ALL_BOOKS,
+          data: {
+            allBooks: [...cachedData.allBooks, addedBook],
+          },
+        });
+      }
+
+      // Update the cache for BOOKS_BY_GENRE query if the new book matches the selected genre
+      if (selectedGenre !== "all" && addedBook.genres.includes(selectedGenre)) {
+        const cachedGenreData = client.cache.readQuery({
+          query: BOOKS_BY_GENRE,
+          variables: { genre: selectedGenre },
+        });
+        if (cachedGenreData) {
+          console.log(
+            "Updating BOOKS_BY_GENRE cache with new book:",
+            addedBook
+          );
+          client.cache.writeQuery({
+            query: BOOKS_BY_GENRE,
+            variables: { genre: selectedGenre },
+            data: {
+              allBooks: [...cachedGenreData.allBooks, addedBook],
+            },
+          });
+        }
+      }
+    },
+  });
+
+  useEffect(() => {
+    console.log("Subscription status:", {
+      subscriptionLoading,
+      subscriptionError,
+      subscriptionData,
+    });
+  }, [subscriptionLoading, subscriptionError, subscriptionData]);
 
   useEffect(() => {
     if (props.selectedGenre) {
